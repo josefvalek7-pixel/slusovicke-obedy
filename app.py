@@ -90,7 +90,7 @@ def parse_pdf(data):
     pages=[]
     for page in doc:
         text=page.get_text(sort=True)
-        if len(text.strip())<100:
+        if not re.search(r"(?i)(pondělí|úterý|středa|čtvrtek|pátek)\s*\d{1,2}",text):
             import pytesseract
             from PIL import Image
             pix=page.get_pixmap(matrix=fitz.Matrix(2.5,2.5),alpha=False)
@@ -120,17 +120,40 @@ def parse_sud_menu(text):
     return out
 
 def fetch_sud():
-    r=requests.get(SUD,timeout=15);r.raise_for_status();s=BeautifulSoup(r.text,'html.parser')
-    links=[a for a in s.find_all('a',href=True) if '.pdf' in a['href'].lower()]
-    if not links:raise ValueError('PDF jídelníček SUD nebyl nalezen')
-    a=next((a for a in links if 'menu' in norm(a.get_text(' ',strip=True)+' '+a['href'])),links[0])
-    pdfurl=urljoin(SUD,a['href']);pr=requests.get(pdfurl,timeout=25);pr.raise_for_status()
-    raw=parse_pdf(pr.content)
-    if len(raw.strip())<40:raise ValueError('PDF SUD se nepodařilo rozpoznat')
-    items=parse_sud_menu(raw)
-    if not items:items=parse_generic_menu(raw,'SUD Slušovice')
-    if not items:raise ValueError('V PDF SUD nebyla rozpoznána jednotlivá jídla')
-    return items,pdfurl
+    # SUD publishes the current weekly PDF in a public Supabase Storage object.
+    # The ?v=... cache-buster changes, but the object path remains constant.
+    primary='https://xlurxdjzjftukwicctqr.supabase.co/storage/v1/object/public/menu/menu.pdf'
+    candidates=[primary]
+    try:
+        r=requests.get(SUD,timeout=15,headers={'User-Agent':'Mozilla/5.0'})
+        r.raise_for_status()
+        soup=BeautifulSoup(r.text,'html.parser')
+        for a in soup.find_all('a',href=True):
+            if '.pdf' in a['href'].lower():
+                u=urljoin(SUD,a['href'])
+                if u not in candidates:candidates.append(u)
+    except requests.RequestException as e:
+        app.logger.warning('SUD website lookup failed: %s',e)
+    errors=[]
+    for pdfurl in candidates:
+        try:
+            pr=requests.get(pdfurl,timeout=30,headers={'User-Agent':'Mozilla/5.0','Cache-Control':'no-cache'},params={'v':str(int(datetime.datetime.now().timestamp()))} if '?' not in pdfurl else None)
+            pr.raise_for_status()
+            if not pr.content.startswith(b'%PDF'):
+                raise ValueError('Odkaz nevrátil PDF')
+            raw=parse_pdf(pr.content)
+            items=parse_sud_menu(raw)
+            if not items:items=parse_generic_menu(raw,'SUD Slušovice')
+            if not items:raise ValueError('Z PDF se nepodařilo rozpoznat jednotlivá jídla')
+            # Do not display an old week just because OCR managed to parse it.
+            dates=[datetime.date.fromisoformat(x['day']) for x in items if x.get('day')]
+            if dates and not (min(dates) <= today() <= max(dates)):
+                raise ValueError('PDF obsahuje jiný týden (%s až %s)'%(min(dates),max(dates)))
+            return items,pdfurl
+        except Exception as e:
+            errors.append('%s: %s'%(pdfurl.split('?')[0],str(e)))
+            app.logger.warning('SUD PDF failed: %s',errors[-1])
+    raise ValueError('SUD: '+ ' | '.join(errors)[:600])
 
 def parse_generic_menu(text,restaurant):
     lines=[clean(x) for x in text.splitlines() if clean(x)]
