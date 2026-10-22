@@ -1,0 +1,165 @@
+{
+  "favorites": [
+    "řízek",
+    "svíčková",
+    "guláš"
+  ],
+  "prerovska": {
+    "items": [
+      {
+        "name": "Česneková s opečeným chlebem",
+        "restaurant": "Přerovská restaurace",
+        "price": null,
+        "day": "2026-10-19",
+        "kind": "soup",
+        "note": ""
+      },
+      {
+        "name": "Záhorácký závitek, šťouchaný brambor s cibulkou",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-19",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Smažený sýrový mix, hranolky, tatarská omáčka",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-19",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Hovězí vařený krk, koprová omáčka, knedlík",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-19",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Frankfurtská",
+        "restaurant": "Přerovská restaurace",
+        "price": null,
+        "day": "2026-10-20",
+        "kind": "soup",
+        "note": ""
+      },
+      {
+        "name": "Smažené rybí filé, bramborová kaše",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-20",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Vepřová plec na slanině, rýže, zelný salát s koprem",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-20",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Meruňkové kynuté knedlíky s kysanou smetanou, tvarohem a cukrem",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-20",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Zasmažená zeleninová s bramborem",
+        "restaurant": "Přerovská restaurace",
+        "price": null,
+        "day": "2026-10-21",
+        "kind": "soup",
+        "note": ""
+      },
+      {
+        "name": "Valašská směs v bramboráku",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-21",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Kuřecí stehno na kari, rýže",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-21",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Listový salát s kuřecími kousky se žampiony a",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-21",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Hrachová",
+        "restaurant": "Přerovská restaurace",
+        "price": null,
+        "day": "2026-10-22",
+        "kind": "soup",
+        "note": ""
+      },
+      {
+        "name": "Pečená kuřecí křídla, hranolky, tatarská omáčka",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-22",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Bratislavská vepřová plec, knedlík",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-22",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Listový salát s grilovanou panenkou a hořčicovým dresingem, toast",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-22",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Vývar s nudlemi",
+        "restaurant": "Přerovská restaurace",
+        "price": null,
+        "day": "2026-10-23",
+        "kind": "soup",
+        "note": ""
+      },
+      {
+        "name": "Smažený vepřový řízek, bramborový salát s majonézou",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-23",
+        "kind": "main",
+        "note": ""
+      },
+      {
+        "name": "Kuřecí prsíčka s mozzarellou a rajčaty, hranolky",
+        "restaurant": "Přerovská restaurace",
+        "price": 165,
+        "day": "2026-10-23",
+        "kind": "main",
+        "note": ""
+      }
+    ],
+    "filename": "jidelnicek_19-23_10_2026.doc"
+  },
+  "updated": "2026-10-22T10:00:00+02:00"
+}
