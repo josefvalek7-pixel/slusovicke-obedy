@@ -46,53 +46,91 @@ def dish(name,restaurant,price=None,day=None,kind='main',note=''):
     return {'name':clean(name),'restaurant':restaurant,'price':price,'day':day,'kind':kind,'note':note}
 
 def fetch_ab():
-    html=requests.get(AB,timeout=15,headers={'User-Agent':'Mozilla/5.0 (compatible; MenuAggregator/1.0)'});html.raise_for_status()
+    html=requests.get(AB,timeout=15,headers={'User-Agent':'Mozilla/5.0'});html.raise_for_status()
     soup=BeautifulSoup(html.text,'html.parser')
-    h=next((x for x in soup.find_all(['h2','h3','h4']) if 'Denní menu' in x.get_text(' ',strip=True)),None)
+    h=next((x for x in soup.find_all(['h2','h3','h4']) if 'denni menu' in norm(x.get_text(' ',strip=True))),None)
     if not h:raise ValueError('Nadpis denního menu nebyl nalezen')
-    date_el=h.find_next(['h2','h3','h4']); m=re.search(r'(\d{1,2})\.(\d{1,2})\.(\d{4})',date_el.get_text(' ',strip=True)) if date_el else None
+    date_el=h.find_next(['h2','h3','h4'])
+    m=re.search(r'(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})',date_el.get_text(' ',strip=True)) if date_el else None
     if not m:raise ValueError('Nelze zjistit datum menu AB')
     date=datetime.date(int(m[3]),int(m[2]),int(m[1])).isoformat()
-    # Extract only text between date heading and next main section.
-    pieces=[]
+    chunks=[]
     for e in date_el.next_elements:
-        if getattr(e,'name',None) in ('h2',) and e is not date_el:break
-        if getattr(e,'name',None) in ('li','p'):
-            if e.find_parent(['li','p']) is None:pieces.append(e.get_text(' ',strip=True))
-    if not pieces:
-        section=[]
+        if getattr(e,'name',None)=='h2' and e is not date_el:break
+        if getattr(e,'name',None) in ('li','p') and e.find_parent(['li','p']) is None:
+            chunks.append(e.get_text(' ',strip=True))
+    if not chunks:
+        chunks=[]
         for e in date_el.next_elements:
             if getattr(e,'name',None)=='h2' and e is not date_el:break
-            if isinstance(e,str):section.append(str(e))
-        pieces=[clean(x) for x in '\n'.join(section).splitlines()]
+            if isinstance(e,str):chunks.append(str(e))
+    raw=' '.join(chunks)
+    raw=re.sub(r'(?i)\b(hlavní jídlo|polévka)\s*:',r' | \1: ',raw)
+    raw=re.sub(r'(?<!\w)(?=[1-9]\s*[.)]\s*[A-Za-zÁ-ž])',' | ',raw)
     out=[];kind='main'
-    for p in pieces:
-        p=clean(p)
-        if not p:continue
-        if p.lower()=='polévka':kind='soup';continue
-        if p.lower()=='hlavní jídlo':kind='main';continue
-        p=re.sub(r'^\d+[.)]\s*','',p)
-        if re.search(r'\(\s*[\d, ]+\)',p) or (kind=='main' and len(p)>15 and not p.lower().startswith('kde nás')):
-            p=re.sub(r'\s*\*?\s*\([\d, ]+\)\s*$','',p).strip(' *')
-            if p and not any(x['name']==p for x in out):out.append(dish(p,'AB Slušovice',day=date,kind=kind))
+    for part in raw.split('|'):
+        part=clean(part)
+        if not part:continue
+        if re.search(r'(?i)^pol[eé]vka\s*:',part):
+            kind='soup';part=re.sub(r'(?i)^pol[eé]vka\s*:\s*','',part)
+        if re.search(r'(?i)^hlavn[ií] j[ií]dlo\s*:',part):
+            kind='main';part=re.sub(r'(?i)^hlavn[ií] j[ií]dlo\s*:\s*','',part)
+        numbered=bool(re.match(r'^\d+[.)]\s*',part))
+        part=re.sub(r'^\d+[.)]\s*','',part)
+        part=re.sub(r'\s*\*?\s*\([\d, ]+\)\s*$','',part).strip(' *')
+        if len(part)>3 and (numbered or re.search(r'\([\d, ]+\)',part) or kind=='soup'):
+            if not any(x['name']==part for x in out):out.append(dish(part,'AB Slušovice',day=date,kind=kind))
+            if kind=='soup':kind='main'
     if not out:raise ValueError('Z webu AB se nepodařilo získat položky')
     return out,date
 
 def parse_pdf(data):
-    try:
-        import fitz
-        doc=fitz.open(stream=data,filetype='pdf')
-        return '\n'.join(p.get_text(sort=True) for p in doc)
-    except Exception:return ''
+    import fitz
+    doc=fitz.open(stream=data,filetype='pdf')
+    pages=[]
+    for page in doc:
+        text=page.get_text(sort=True)
+        if len(text.strip())<100:
+            import pytesseract
+            from PIL import Image
+            pix=page.get_pixmap(matrix=fitz.Matrix(2.5,2.5),alpha=False)
+            text=pytesseract.image_to_string(Image.open(io.BytesIO(pix.tobytes('png'))),lang='ces+eng')
+        pages.append(text)
+    return '\n'.join(pages)
+
+def parse_sud_menu(text):
+    out=[];current=None;expect_soup=False
+    for raw in text.splitlines():
+        line=clean(raw)
+        if not line:continue
+        w=re.search(r'(?i)\b(pondělí|úterý|středa|čtvrtek|pátek)\s*(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4})',line)
+        if w:
+            try:current=datetime.date(int(w[4]),int(w[3]),int(w[2])).isoformat()
+            except ValueError:current=None
+            expect_soup=True;continue
+        if not current:continue
+        if re.search(r'(?i)(seznam alergen|zákaz prodeje)',line):break
+        if re.fullmatch(r'\d{2,3}\s*(?:Kč|Kc|KE)?',line,re.I):continue
+        numbered=re.match(r'^(?:[1-4]\s*[.)]?\s+)(.+)$',line)
+        if numbered:
+            name=clean(numbered[1]);expect_soup=False
+            if len(name)>8:out.append(dish(name,'SUD Slušovice',day=current))
+        elif expect_soup and len(line)>8 and not re.search(r'(?i)restaurace|jídelníček',line):
+            out.append(dish(line,'SUD Slušovice',day=current,kind='soup'));expect_soup=False
+    return out
 
 def fetch_sud():
     r=requests.get(SUD,timeout=15);r.raise_for_status();s=BeautifulSoup(r.text,'html.parser')
-    a=next((a for a in s.find_all('a',href=True) if '.pdf' in a['href'].lower()),None)
-    if not a:raise ValueError('PDF jídelníček SUD nebyl nalezen')
-    pdfurl=urljoin(SUD,a['href']);pr=requests.get(pdfurl,timeout=20);pr.raise_for_status()
+    links=[a for a in s.find_all('a',href=True) if '.pdf' in a['href'].lower()]
+    if not links:raise ValueError('PDF jídelníček SUD nebyl nalezen')
+    a=next((a for a in links if 'menu' in norm(a.get_text(' ',strip=True)+' '+a['href'])),links[0])
+    pdfurl=urljoin(SUD,a['href']);pr=requests.get(pdfurl,timeout=25);pr.raise_for_status()
     raw=parse_pdf(pr.content)
-    if len(raw.strip())<40:raise ValueError('PDF SUD neobsahuje čitelný text (pravděpodobně obrázek)')
-    return parse_generic_menu(raw,'SUD Slušovice'),pdfurl
+    if len(raw.strip())<40:raise ValueError('PDF SUD se nepodařilo rozpoznat')
+    items=parse_sud_menu(raw)
+    if not items:items=parse_generic_menu(raw,'SUD Slušovice')
+    if not items:raise ValueError('V PDF SUD nebyla rozpoznána jednotlivá jídla')
+    return items,pdfurl
 
 def parse_generic_menu(text,restaurant):
     lines=[clean(x) for x in text.splitlines() if clean(x)]
@@ -156,6 +194,11 @@ def word_text(data,filename):
 
 def authorized():
     supplied=request.headers.get('X-Admin-Password','')
+    encoded=request.headers.get('X-Admin-Password-B64','')
+    if encoded:
+        import base64
+        try:supplied=base64.b64decode(encoded,validate=True).decode('utf-8')
+        except (ValueError,UnicodeError):return False
     import hmac
     return bool(ADMIN_PASSWORD) and hmac.compare_digest(supplied,ADMIN_PASSWORD)
 
